@@ -1,12 +1,10 @@
-.libPaths("E://R")
-
 #R RStudio 2022.07.2 Build 576
 #R 4.1.2
 #Tongue end/Bourne Eau Predator-prey interactions data set
 
 #Required libraries
 
-library(dplyr)
+library(tidyverse)
 library(dunn.test)
 library(car)
 library(ggeffects)
@@ -23,9 +21,9 @@ library(cowplot)
 
 ##tongue_1.csv - Primary data set: sample period, month, PRE, PRE duration, attack in  PRE, number of attacks, foraging rate, predator size, predator species
 ## shoal size, shoal density, shoal area, switching rate
-tongue_1=read.csv(file.choose())
+tongue_1=read_csv("./data/tongue_1.csv")
 ##tongue_2 - Secondary data set: attack duration, shoal behavior response, shoal behavior duration, shoal change (density, area)
-tongue_2=read.csv(file.choose())
+tongue_2=read_csv("./data/tongue_2.csv")
 
 #####Set up labels and factors
 
@@ -83,55 +81,19 @@ qqline(tongue_1$shoal_density, col = "steelblue", lwd = 2)
 ###PRE metadata (sample periods, months, predator species, attack during)
 
 #PRE count by species, % of PRE
-tongue_1  %>%
-  group_by(sp_pred) %>% 
-  summarise(
-    n = n())%>%
-  mutate(rel.freq = paste0(round(100 * n/sum(n), 0), "%"))
+tongue_1  %>% group_by(sp_pred) %>%  summarise(n = n())%>% mutate(rel.freq = paste0(round(100 * n/sum(n), 0), "%"))
 #PRE count by month, species, % of PRE
-tongue_1  %>%
-  group_by(month,sp_pred) %>% 
-  summarise(
-    n = n())%>%
-  mutate(rel.freq = paste0(round(100 * n/sum(n), 0), "%"))
+tongue_1  %>%  group_by(month,sp_pred) %>% summarise(n = n())%>%mutate(rel.freq = paste0(round(100 * n/sum(n), 0), "%"))
 #PRE count by sample, species, % of PRE
-tongue_1  %>%
-  group_by(sample,sp_pred) %>% 
-  summarise(
-    n = n())%>%
-  mutate(rel.freq = paste0(round(100 * n/sum(n), 0), "%"))
+tongue_1  %>%group_by(sample,sp_pred) %>%  summarise(n = n())%>%mutate(rel.freq = paste0(round(100 * n/sum(n), 0), "%"))
 #PRE duration by species
-tongue_1  %>% 
-  group_by(sp_pred) %>% 
-  summarise(
-    med = median(pre_dur),
-    min = min(pre_dur),
-    max = max(pre_dur),
-    IQR = IQR(pre_dur))
+tongue_1  %>% group_by(sp_pred) %>% summarise(med = median(pre_dur),min = min(pre_dur),max = max(pre_dur),IQR = IQR(pre_dur))
 #PRE duration by month, species
-tongue_1  %>% 
-  group_by(month,sp_pred) %>% 
-  summarise(
-    med = median(pre_dur),
-    min = min(pre_dur),
-    max = max(pre_dur),
-    IQR = IQR(pre_dur))
+tongue_1  %>% group_by(month,sp_pred) %>% summarise(med = median(pre_dur), min = min(pre_dur),max = max(pre_dur), IQR = IQR(pre_dur))
 #PRE duration by sample, species
-tongue_1  %>% 
-  group_by(sample,sp_pred) %>% 
-  summarise(
-    med = median(pre_dur),
-    min = min(pre_dur),
-    max = max(pre_dur),
-    IQR = IQR(pre_dur))
+tongue_1  %>% group_by(sample,sp_pred) %>%  summarise(med = median(pre_dur),min = min(pre_dur), max = max(pre_dur),IQR = IQR(pre_dur))
 #PRE duration by attack status, pike
-tongue_1  %>% filter(sp_pred=="Esox lucius")%>%
-  group_by(action_pred) %>% 
-  summarise(
-    med = median(pre_dur),
-    min = min(pre_dur),
-    max = max(pre_dur),
-    IQR = IQR(pre_dur))
+tongue_1  %>% filter(sp_pred=="Esox lucius")%>%group_by(action_pred) %>% summarise( med = median(pre_dur),min = min(pre_dur),max = max(pre_dur),IQR = IQR(pre_dur))
 
 #########PRE duration statistical
 
@@ -141,97 +103,43 @@ wilcox.test(tongue_1$pre_dur~tongue_1$sp_pred)
 
 #sample period
 #corm
-tongue_1 %>% filter(sp_pred=="Phalacrocorax carbo")%>%
-  kruskal.test(data=.,pre_dur~sample)
+tongue_1 %>% filter(sp_pred=="Phalacrocorax carbo")%>% kruskal.test(data=.,pre_dur~sample)
 #Kruskal-Wallis chi-squared = 0.59326, df = 2, p-value = 0.7433
 
 #pike
-tongue_1 %>% filter(sp_pred=="Esox lucius")%>%
-  kruskal.test(data=.,pre_dur~sample)
+tongue_1 %>% filter(sp_pred=="Esox lucius")%>%kruskal.test(data=.,pre_dur~sample)
 #Kruskal-Wallis chi-squared = 14.619, df = 3, p-value = 0.002173
 
 #post-hoc testing
-tongue_1 %>% filter(sp_pred=="Esox lucius")%>%
-  dunn.test(x=.$pre_dur, g=.$sample)
+tongue_1 %>% filter(sp_pred=="Esox lucius")%>%dunn.test(x=.$pre_dur, g=.$sample)
 
 #between attack/no attack pike
-tongue_1 %>% filter(sp_pred=="Esox lucius")%>%
-  wilcox.test(data=.,pre_dur~attack_in_pre)
+tongue_1 %>% filter(sp_pred=="Esox lucius")%>%wilcox.test(data=.,pre_dur~attack_in_pre)
 #W = 1946, p-value = 0.04029
 
 #####Predator metadata (size, attacks, foraging rate)
 
 #Predator size
-tongue_1  %>% 
-  group_by(sp_pred) %>% 
-  summarise(
-    med = median(size_pred),
-    min = min(size_pred),
-    max = max(size_pred),
-    IQR = IQR(size_pred))
+tongue_1  %>% group_by(sp_pred) %>% summarise(med = median(size_pred),min = min(size_pred),max = max(size_pred),IQR = IQR(size_pred))
 #Number of attacks predator species
-tongue_1  %>% 
-  group_by(sp_pred) %>% 
-  summarise(
-    sum=sum(n_attack),
-    n=n())%>%
-  mutate(rel.freq = paste0(round(100 * n/sum(n), 0), "%"))
+tongue_1  %>% group_by(sp_pred) %>% summarise(sum=sum(n_attack),n=n())%>%mutate(rel.freq = paste0(round(100 * n/sum(n), 0), "%"))
 #Number of PRE with attack, pike
-tongue_1  %>% filter(sp_pred=="Esox lucius")%>%
-  group_by(attack_in_pre) %>% 
-  summarise(
-    sum=sum(n_attack),
-    n=n())%>%
-  mutate(rel.freq = paste0(round(100 * n/sum(n), 0), "%"))
+tongue_1  %>% filter(sp_pred=="Esox lucius")%>% group_by(attack_in_pre) %>% summarise(sum=sum(n_attack), n=n())%>%mutate(rel.freq = paste0(round(100 * n/sum(n), 0), "%"))
 #Predator foraging rate, cormorant
-tongue_1  %>% filter(sp_pred=="Phalacrocorax carbo")%>%
-  summarise(
-    med = median(foraging_rate),
-    min = min(foraging_rate),
-    max = max(foraging_rate),
-    IQR = IQR(foraging_rate))
+tongue_1  %>% filter(sp_pred=="Phalacrocorax carbo")%>%summarise(med = median(foraging_rate),min = min(foraging_rate),max = max(foraging_rate),IQR = IQR(foraging_rate))
 #Predator foraging rate, cormorant, month
-tongue_1  %>% filter(sp_pred=="Phalacrocorax carbo")%>%
-  group_by(month)%>%
-  summarise(
-    med = median(foraging_rate),
-    min = min(foraging_rate),
-    max = max(foraging_rate),
-    IQR = IQR(foraging_rate))
+tongue_1  %>% filter(sp_pred=="Phalacrocorax carbo")%>%group_by(month)%>%summarise(med = median(foraging_rate),min = min(foraging_rate),max = max(foraging_rate), IQR = IQR(foraging_rate))
 #Predator foraging rate, cormorant, sample
-tongue_1  %>% filter(sp_pred=="Phalacrocorax carbo")%>%
-  group_by(sample)%>%
-  summarise(
-    med = median(foraging_rate),
-    min = min(foraging_rate),
-    max = max(foraging_rate),
-    IQR = IQR(foraging_rate))
+tongue_1  %>% filter(sp_pred=="Phalacrocorax carbo")%>%group_by(sample)%>%summarise( med = median(foraging_rate), min = min(foraging_rate), max = max(foraging_rate),IQR = IQR(foraging_rate))
 #Predator foraging rate, pike
-tongue_1  %>% filter(sp_pred=="Esox lucius")%>% filter(attack_in_pre=="Predator attack \n during PRE")%>% 
-  summarise(
-    med = median(foraging_rate),
-    min = min(foraging_rate),
-    max = max(foraging_rate),
-    IQR = IQR(foraging_rate))
+tongue_1  %>% filter(sp_pred=="Esox lucius")%>% filter(attack_in_pre=="Predator attack \n during PRE")%>% summarise(med = median(foraging_rate),min = min(foraging_rate),max = max(foraging_rate),IQR = IQR(foraging_rate))
 ##Time until attack pike PRE
-tongue_1  %>% filter(sp_pred=="Esox lucius")%>% filter(attack_in_pre=="Predator attack \n during PRE")%>% 
-  summarise(
-    med = median(tte_pred),
-    min = min(tte_pred),
-    max = max(tte_pred),
-    IQR = IQR(tte_pred))
+tongue_1  %>% filter(sp_pred=="Esox lucius")%>% filter(attack_in_pre=="Predator attack \n during PRE")%>%  summarise( med = median(tte_pred), min = min(tte_pred), max = max(tte_pred),IQR = IQR(tte_pred))
 ###Attack duration
-tongue_2  %>%  filter(action_pred=="Attack")%>%
-  group_by(sp_pred)%>%
-  summarise(
-    med = median(action_dur),
-    min = min(action_dur),
-    max = max(action_dur),
-    IQR = IQR(action_dur))
+tongue_2  %>%  filter(action_pred=="Attack")%>%group_by(sp_pred)%>%summarise(med = median(action_dur),min = min(action_dur), max = max(action_dur),IQR = IQR(action_dur))
 
 #statistical test
-tongue_2  %>%  filter(action_pred=="Attack")%>%
-  wilcox.test(data=.,action_dur~sp_pred)
+tongue_2  %>%  filter(action_pred=="Attack")%>%wilcox.test(data=.,action_dur~sp_pred)
 #W = 1599.5, p-value = 0.007516
 
 ###Foraging rate statistical
@@ -285,30 +193,13 @@ tongue_1  %>% filter(sp_pred=="Phalacrocorax carbo")%>%
 #############Prey shoal metadata
 
 #Prey shoal size
-tongue_1  %>% filter(!is.na(shoal_size))%>%
-  summarise(
-    sum=sum(shoal_size))
+tongue_1  %>% filter(!is.na(shoal_size))%>%summarise(sum=sum(shoal_size))
 #Prey shoal size, month, sample
-tongue_1  %>% filter(!is.na(shoal_size))%>%
-  group_by(month,sample)%>%
-  summarise(
-    sum=sum(shoal_size))
+tongue_1  %>% filter(!is.na(shoal_size))%>%group_by(month,sample)%>%summarise(sum=sum(shoal_size))
 #Prey shoal density, month, sample
-tongue_1  %>% filter(!is.na(shoal_density))%>%
-  group_by(month, sample)%>%
-  summarise(
-    med = median(shoal_density),
-    min = min(shoal_density),
-    max = max(shoal_density),
-    IQR = IQR(shoal_density))
+tongue_1  %>% filter(!is.na(shoal_density))%>%group_by(month, sample)%>%summarise( med = median(shoal_density), min = min(shoal_density),max = max(shoal_density), IQR = IQR(shoal_density))
 #Prey shoal density, species, attack behaviour
-tongue_1  %>% filter(!is.na(shoal_density))%>%
-  group_by(sp_pred, action_pred)%>%
-  summarise(
-    med = median(shoal_density),
-    min = min(shoal_density),
-    max = max(shoal_density),
-    IQR = IQR(shoal_density))
+tongue_1  %>% filter(!is.na(shoal_density))%>%group_by(sp_pred, action_pred)%>%summarise(med = median(shoal_density),min = min(shoal_density),max = max(shoal_density),IQR = IQR(shoal_density))
 
 #############Prey shoal statistical
 
@@ -337,40 +228,16 @@ tongue_1%>%filter(sp_pred=="Esox lucius")%>%
 ##Areal response of prey, predator species
 
 #cormorant
-tongue_2  %>%filter(!is.na(change_area))%>%filter(sp_pred=="Phalacrocorax carbo")%>%
-  group_by(action_pred) %>% 
-  summarise(
-    med = median(change_area),
-    min = min(change_area),
-    max = max(change_area),
-    IQR = IQR(change_area))
+tongue_2  %>%filter(!is.na(change_area))%>%filter(sp_pred=="Phalacrocorax carbo")%>%group_by(action_pred) %>% summarise( med = median(change_area),min = min(change_area),max = max(change_area),IQR = IQR(change_area))
 #pike
-tongue_2  %>%filter(!is.na(change_area))%>%filter(sp_pred=="Esox lucius")%>%
-  group_by(action_pred) %>% 
-  summarise(
-    med = median(change_area),
-    min = min(change_area),
-    max = max(change_area),
-    IQR = IQR(change_area))
+tongue_2  %>%filter(!is.na(change_area))%>%filter(sp_pred=="Esox lucius")%>% group_by(action_pred) %>% summarise(med = median(change_area),min = min(change_area),max = max(change_area),IQR = IQR(change_area))
 
 #Density response of prey, predator species
 
 #cormorant
-tongue_2  %>%filter(!is.na(change_density))%>%filter(sp_pred=="Phalacrocorax carbo")%>%
-  group_by(action_pred) %>% 
-  summarise(
-    med = median(change_density),
-    min = min(change_density),
-    max = max(change_density),
-    IQR = IQR(change_density))
+tongue_2  %>%filter(!is.na(change_density))%>%filter(sp_pred=="Phalacrocorax carbo")%>%group_by(action_pred) %>% summarise( med = median(change_density), min = min(change_density), max = max(change_density),IQR = IQR(change_density))
 #pike
-tongue_2  %>%filter(!is.na(change_density))%>%filter(sp_pred=="Esox lucius")%>%
-  group_by(action_pred) %>% 
-  summarise(
-    med = median(change_density),
-    min = min(change_density),
-    max = max(change_density),
-    IQR = IQR(change_density))
+tongue_2  %>%filter(!is.na(change_density))%>%filter(sp_pred=="Esox lucius")%>%group_by(action_pred) %>% summarise(med = median(change_density), min = min(change_density),max = max(change_density),IQR = IQR(change_density))
 
 #Prey response statistical
 
@@ -435,13 +302,7 @@ tongue_2  %>%filter(!is.na(beh_response_dur))%>%
     IQR = IQR(beh_response_dur))
 
 #Behaviour duration, main categories
-tongue_2  %>%filter(!is.na(beh_response_dur))%>%
-  group_by(response) %>% 
-  summarise(
-    med = median(beh_response_dur),
-    min = min(beh_response_dur),
-    max = max(beh_response_dur),
-    IQR = IQR(beh_response_dur))
+tongue_2  %>%filter(!is.na(beh_response_dur))%>%group_by(response) %>% summarise( med = median(beh_response_dur), min = min(beh_response_dur),max = max(beh_response_dur), IQR = IQR(beh_response_dur))
 
 #behaviour duration across categories
 tongue_2  %>% filter(!is.na(beh_response_dur))%>%
@@ -481,12 +342,7 @@ switch_3 <-tongue_1  %>%filter(!is.na(switch_rate))%>%filter(sp_pred=="Phalacroc
 switch_df <- rbind(switch_1, switch_2, switch_3)
 
 #Descriptive statistics
-switch_df  %>%
-  group_by(sp_pred, action_pred)%>%
-  summarise(
-    med = median(switch_rate),
-    IQR = IQR(switch_rate),
-    n = n())
+switch_df  %>%group_by(sp_pred, action_pred)%>%summarise(med = median(switch_rate),IQR = IQR(switch_rate), n = n())
 
 #Switch rate pike, corm attack
 
@@ -938,7 +794,7 @@ switch_rate_plot <- ggplot(switch_df, aes(x = factor(action_pred), y = switch_ra
   geom_boxplot(outlier.shape=NA, coef = 0, width=0.5, position = position_dodge(0.9)) +
   scale_y_continuous(breaks = seq(0, 10, 2),limits=c(0, 12)) +
   scale_x_discrete(breaks = c(1, 2, 3), labels = x_titles)+
-  labs(x = "Predator species and attack behaviour", y = expression (atop("Switch rate",~("switches·minute" ^-1))))+
+  labs(x = "Predator species and attack behaviour", y = expression (atop("Switch rate",~("switches?minute" ^-1))))+
   scale_color_grey() + 
   theme_bw() + 
   theme(panel.grid.major = element_blank(),
@@ -981,7 +837,7 @@ dur_switch <-ggplot(model_df, aes(x=pre_dur, y=switch_rate)) +
   coord_cartesian(ylim = c(0,16))+
   scale_y_continuous(breaks = seq(0, 15, 2), expand=c(0,0)) +
   scale_x_continuous(breaks = seq(0, 150, 30),limits=c(0,150),expand=c(0,0)) +
-  labs(x = expression ("PRE Duration s" ^-1), y = expression("Switch rate" ~ ("switches·minute" ^-1)))+
+  labs(x = expression ("PRE Duration s" ^-1), y = expression("Switch rate" ~ ("switches?minute" ^-1)))+
   theme_bw()+
   theme(panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
@@ -1005,7 +861,7 @@ forag_switch <-ggplot(model_df, aes(x=foraging_rate, y=switch_rate)) +
   coord_cartesian(ylim = c(0,16))+
   scale_y_continuous(breaks = seq(0, 15, 2), expand=c(0,0)) +
   scale_x_continuous(breaks = seq(0, 8, 1),limits=c(0,8),expand=c(0,0)) +
-  labs(x = expression ("Foraging rate" ~ ("attacks·minute" ^-1)), y = expression("Switch rate" ~ ("switches·minute" ^-1)))+
+  labs(x = expression ("Foraging rate" ~ ("attacks?minute" ^-1)), y = expression("Switch rate" ~ ("switches?minute" ^-1)))+
   theme_bw()+
   theme(panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
