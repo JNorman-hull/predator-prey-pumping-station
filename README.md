@@ -1,6 +1,4 @@
-# Impact of anthropogenic infrastructure on prey fish ecology: simultaneous quantification of predator-prey interactions
-
-test edit
+# Impact of anthropogenic infrastructure on aquatic and avian predator-prey interactions in a modified lowland river
 
 Corresponding author
 
