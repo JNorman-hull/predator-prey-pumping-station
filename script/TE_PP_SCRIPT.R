@@ -21,6 +21,7 @@ library(cowplot)
 
 ##tongue_1.csv - Primary data set: sample period, month, PRE, PRE duration, attack in  PRE, number of attacks, foraging rate, predator size, predator species
 ## shoal size, shoal density, shoal area, switching rate
+#perform data profiling on this data and plot interesting relationships
 tongue_1=read_csv("./data/tongue_1.csv")
 ##tongue_2 - Secondary data set: attack duration, shoal behavior response, shoal behavior duration, shoal change (density, area)
 tongue_2=read_csv("./data/tongue_2.csv")
@@ -108,6 +109,7 @@ tongue_1 %>% filter(sp_pred=="Phalacrocorax carbo")%>% kruskal.test(data=.,pre_d
 
 #pike
 tongue_1 %>% filter(sp_pred=="Esox lucius")%>%kruskal.test(data=.,pre_dur~sample)
+
 #Kruskal-Wallis chi-squared = 14.619, df = 3, p-value = 0.002173
 
 #post-hoc testing
@@ -146,9 +148,11 @@ tongue_2  %>%  filter(action_pred=="Attack")%>%wilcox.test(data=.,action_dur~sp_
 
 ###Correlation testing###
 #Add ID ROW
+#explain this code
 tongue_1$ID<-1:nrow(tongue_1)
 
 #Corm, foraging_rate, row ID
+#provide an alternative way of testing correlation
 tongue_1%>%filter(sp_pred=="Phalacrocorax carbo")%>% filter(action_pred=="Attack")%>%
   cor.test(data=.,.$ID, .$foraging_rate,  method="spearman", exact=FALSE)
 ggscatter(tongue_1%>%filter(sp_pred=="Phalacrocorax carbo")%>% filter(action_pred=="Attack") ,x = "ID", y = "foraging_rate", 
@@ -338,6 +342,18 @@ switch_1 <-tongue_1  %>%filter(!is.na(switch_rate))%>%filter(sp_pred=="Esox luci
 switch_2 <-tongue_1  %>%filter(!is.na(switch_rate))%>%filter(sp_pred=="Esox lucius")%>%filter(attack_in_pre=="No predator attack \n during PRE")
 #Corm
 switch_3 <-tongue_1  %>%filter(!is.na(switch_rate))%>%filter(sp_pred=="Phalacrocorax carbo")
+
+
+#Convert column group from factor to numeric for row binding
+#as.character first required to convert factor to character, and then to numeric
+switch_1$sp_pred = as.numeric(as.character(switch_1$sp_pred))
+#rename group to 1
+switch_1["sp_pred"] <- 2
+switch_3$sp_pred = as.numeric(as.character(switch_3$sp_pred))
+#rename group to 1
+switch_3["sp_pred"] <- 1
+
+##modified for figure creation, code will need adjusting accordingly
 
 switch_df <- rbind(switch_1, switch_2, switch_3)
 
@@ -601,9 +617,62 @@ modforp_dur <-ggpredict(model2_duration, terms = c("pre_dur[0:150, by=1]","sp_pr
 modforc <-ggpredict(model2_foraging, terms = c("foraging_rate[0:8, by=0.1]","sp_pred[P carbo]"))
 modforp <-ggpredict(model2_foraging, terms = c("foraging_rate[0:8, by=0.1]","sp_pred[E lucius]"))
 
+######Revisiting GLM analysis RE: T. Reid Nelson comments
+
+##Remove species interaction
+
+model2.1_foraging<- glm(switch_rate ~ foraging_rate+sp_pred,family=gaussian(link="log"),
+                        data = model_df)
+
+summary (model2.1_foraging)
+table1 <- summary (model2.1_foraging)$coefficients
+write.csv(table1, file = "model2.1_foraging.csv")
+
+#AIC marginally reduced by 2 from removing species interaction
+
+plot(ggpredict(model2.1_foraging, terms = c("foraging_rate[0:6, by=0.1]","sp_pred")))
+plot(ggpredict(model2.1_foraging, terms = c("foraging_rate[0:8, by=0.1]","sp_pred[E lucius]")))
+
+######
+
+model2.1_duration<- glm(switch_rate ~ pre_dur+sp_pred,family=gaussian(link="log"),
+                        data = model_df)
+
+summary (model2.1_duration)
+table2 <- summary (model2.1_duration)$coefficients
+write.csv(table2, file = "model2.1_duration.csv")
+
+#AIC marginally increased by 3 from removing species interaction
+
+plot(ggpredict(model2.1_duration, terms = c("pre_dur[0:100, by=1]","sp_pred")))
+plot(ggpredict(model2.1_duration, terms = c("pre_dur[0:150, by=1]","sp_pred[E lucius]")))
+
 #############################
 #### 4 - Produce figures ####
 #############################
+
+
+#create colour vector
+
+colours <- c("steelblue1", "grey70")
+
+#Create theme
+
+theme_JN <- function(base_size=10){ 
+  theme_grey() %+replace%
+    theme(
+      axis.text = element_text(colour="black"),
+      axis.title = element_text(colour="black"),
+      axis.ticks = element_line(colour="black"),
+      panel.border = element_rect(colour = "black", fill=NA),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.background = element_blank(),
+      strip.background = element_rect(colour = "black",fill = NA),
+      panel.spacing.x = unit(12, "pt")
+    ) 
+}
+
 
 #### Figure 1 (Figure 3 in paper): N PRE, facet by predator species, month and fill by sample period ####
 
@@ -821,65 +890,132 @@ ggsave(filename="pre_response_bind.svg", plot=pre_response_bind, device = "svg",
 #################
 #################
 
-#### Figure 4 (Figure 5 in paper): GLM prediction weed screen switch rate ####
+#Get predicted model fit line using ggpredict and store as dataframe
 
-#Cord_cartesian is used to 'zoom' the plot, scale_x 'subsets' data
+modforc_dur <-ggpredict(model2.1_duration, terms = c("pre_dur[0:150, by=1]","sp_pred[P carbo]"))
+modforp_dur <-ggpredict(model2.1_duration, terms = c("pre_dur[0:150, by=1]","sp_pred[E lucius]"))
+modforc <-ggpredict(model2.1_foraging, terms = c("foraging_rate[0:8, by=0.1]","sp_pred[P carbo]"))
+modforp <-ggpredict(model2.1_foraging, terms = c("foraging_rate[0:8, by=0.1]","sp_pred[E lucius]"))
 
-dur_switch <-ggplot(model_df, aes(x=pre_dur, y=switch_rate)) + 
-  geom_ribbon(data=modforp_dur, aes(x=x,ymin=conf.low, ymax=conf.high),fill="grey70",alpha=0.2, inherit.aes = FALSE)+
-  geom_line(data=modforp_dur, aes(x=x, y=conf.high),linetype=2,lwd=0.5,alpha=0.5)+
-  geom_line(data=modforp_dur, aes(x=x, y=conf.low),linetype=2,lwd=0.5,alpha=0.5)+
-  geom_line(data=modforp_dur, aes(x=x, y=predicted), colour= "grey70",lwd=1)+
-  geom_ribbon(data=modforc_dur, aes(x=x,ymin=conf.low, ymax=conf.high), fill="steelblue1", alpha=0.2, inherit.aes = FALSE)+
-  geom_line(data=modforc_dur, aes(x=x, y=conf.high),linetype=2,alpha=0.5)+
-  geom_line(data=modforc_dur, aes(x=x, y=conf.low),linetype=2,alpha=0.5)+
-  geom_line(data=modforc_dur, aes(x=x, y=predicted), lwd=1, colour="steelblue1")+
-  coord_cartesian(ylim = c(0,16))+
-  scale_y_continuous(breaks = seq(0, 15, 2), expand=c(0,0)) +
-  scale_x_continuous(breaks = seq(0, 150, 30),limits=c(0,150),expand=c(0,0)) +
-  labs(x = expression ("PRE Duration s" ^-1), y = expression("Switch rate" ~ ("switches?minute" ^-1)))+
-  theme_bw()+
-  theme(panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        panel.border = element_rect(colour="black"),
-        axis.ticks = element_line(colour="black"),
-        axis.title.y = element_blank(),
-        axis.text.y=element_blank(),
-        axis.text.x=element_text(colour="black", size = 10))+
-  rremove("legend")
-dur_switch
+#Convert column group from factor to numeric for row binding
+#as.character first required to convert factor to character, and then to numeric
+modforc_dur$group = as.numeric(as.character(modforc_dur$group))
+#rename group to 1
+modforc_dur["group"] <- 1
+#repeat for pike model
+modforp_dur$group = as.numeric(as.character(modforp_dur$group))
+modforp_dur["group"] <- 2
+#bind data frames
+predator_PRE_dur_mod <- bind_rows(modforc_dur, modforp_dur)
 
-forag_switch <-ggplot(model_df, aes(x=foraging_rate, y=switch_rate)) + 
-  geom_ribbon(data=modforp, aes(x=x,ymin=conf.low, ymax=conf.high),fill="grey70",alpha=0.2, inherit.aes = FALSE)+
-  geom_line(data=modforp, aes(x=x, y=conf.high),linetype=2,lwd=0.5,alpha=0.5)+
-  geom_line(data=modforp, aes(x=x, y=conf.low),linetype=2,lwd=0.5,alpha=0.5)+
-  geom_line(data=modforp, aes(x=x, y=predicted), colour= "grey70",lwd=1)+
-  geom_ribbon(data=modforc, aes(x=x,ymin=conf.low, ymax=conf.high), fill="steelblue1", alpha=0.2, inherit.aes = FALSE)+
-  geom_line(data=modforc, aes(x=x, y=conf.high),linetype=2,alpha=0.5)+
-  geom_line(data=modforc, aes(x=x, y=conf.low),linetype=2,alpha=0.5)+
-  geom_line(data=modforc, aes(x=x, y=predicted), lwd=1, colour="steelblue1")+
-  coord_cartesian(ylim = c(0,16))+
-  scale_y_continuous(breaks = seq(0, 15, 2), expand=c(0,0)) +
-  scale_x_continuous(breaks = seq(0, 8, 1),limits=c(0,8),expand=c(0,0)) +
-  labs(x = expression ("Foraging rate" ~ ("attacks?minute" ^-1)), y = expression("Switch rate" ~ ("switches?minute" ^-1)))+
-  theme_bw()+
-  theme(panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        panel.border = element_rect(colour="black"),
-        axis.ticks = element_line(colour="black"),
-        axis.text.x=element_text(colour="black", size = 10),
-        axis.text.y=element_text(colour="black", size = 10))+
-  rremove("legend")
-forag_switch
+#Follow same process for attack rate
 
-switch_bind <-plot_grid(forag_switch, dur_switch,
-                        ncol = 2, nrow = 1, rel_widths = c(5.3,4.7),align = "h") + 
-  draw_plot_label(label = c("a)", "b)", "CI = 95%", "CI = 95%"), 
+modforc$group = as.numeric(as.character(modforc$group))
+modforc["group"] <- 1
+modforp$group = as.numeric(as.character(modforp$group))
+modforp["group"] <- 2
+predator_attack_mod <- bind_rows(modforc, modforp)
+
+PREduration_mod <-ggplot(predator_PRE_dur_mod, aes(x=x, y=predicted, color=as.factor(group),fill=as.factor(group)))+
+  geom_jitter(model_df, height = 0.5, width = 1, shape = 21, inherit.aes = FALSE,mapping=aes(x=pre_dur, y=switch_rate, fill=as.factor(sp_pred)))+
+  geom_line(lwd=1)+
+  geom_ribbon(aes(x=x,ymin=conf.low, ymax=conf.high),alpha=0.3, colour="black",linetype=0)+
+  scale_fill_manual(values=colours)+
+  scale_colour_manual(values=colours)+
+  scale_y_continuous(breaks = seq(0, 14, 2) ,limits=c(0,17), expand=c(0.02,0), oob = scales::squish) +
+  scale_x_continuous(breaks = seq(0,150,30), limits=c(0,150), expand=c(0,0),  oob = scales::squish) +
+  labs(x = expression ("PRE Duration s" ^-1))+
+  coord_cartesian(ylim=c(0,14),xlim=c(0,150), clip="off") +
+  theme_JN()+
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        legend.position = "none",
+        plot.margin = margin(5.5,10,5.5,5.5, "pt"))
+PREduration_mod 
+
+attack_mod <-ggplot(predator_attack_mod, aes(x=x, y=predicted, color=as.factor(group),fill=as.factor(group)))+
+  geom_jitter(model_df, shape = 21, height = 0.5, width = 1, inherit.aes = FALSE,mapping=aes(x=foraging_rate, y=switch_rate,fill=as.factor(sp_pred)))+
+  geom_line(lwd=1)+
+  geom_ribbon(aes(x=x,ymin=conf.low, ymax=conf.high),alpha=0.3,linetype=0)+
+  scale_fill_manual(values=colours)+
+  scale_colour_manual(values=colours)+
+  scale_y_continuous(breaks = seq(0, 14, 2) ,limits=c(0,22), expand=c(0.02,0), oob = scales::squish) +
+  scale_x_continuous(breaks = seq(0,8,1), limits=c(0,10), expand=c(0,0), oob = scales::squish) +
+  coord_cartesian(ylim=c(0,14),xlim=c(0,8),clip = "off") +
+  labs(x = expression ("Attack rate" ~ ("attacks·minute" ^-1)), y = expression("Switch rate" ~ ("switches·minute" ^-1)))+
+  theme_JN()+
+  theme(legend.position = "none",
+        plot.margin = margin(5.5,10,5.5,5.5, "pt"))
+attack_mod
+
+combined_mod <-plot_grid(attack_mod, PREduration_mod,
+                            ncol = 2, nrow = 1, rel_widths = c(5.3,4.7),align = "h") + 
+  draw_plot_label(label = c("a)", "b)", "CI = 95%"), 
                   size = 10,
-                  x = c(0.10, 0.55,0.31, 0.8), 
-                  y = c(0.97, 0.97,0.97, 0.97)) 
-switch_bind
+                  x = c(0.10, 0.55, 0.8), 
+                  y = c(0.97, 0.97, 0.97)) 
+combined_mod
+ggsave(filename="combined_mod.svg", plot=combined_mod, device = "svg",units="cm", width=14,height=7)
 
-ggsave(filename="switch_bind.svg", plot=switch_bind, device = "svg",units="cm", width=14,height=7, dpi=600)
+# #### Figure 4 (Figure 5 in paper): GLM prediction weed screen switch rate ####
+# 
+# #Cord_cartesian is used to 'zoom' the plot, scale_x 'subsets' data
+# 
+# dur_switch <-ggplot(model_df, aes(x=pre_dur, y=switch_rate)) + 
+#   geom_ribbon(data=modforp_dur, aes(x=x,ymin=conf.low, ymax=conf.high),fill="grey70",alpha=0.2, inherit.aes = FALSE)+
+#   geom_line(data=modforp_dur, aes(x=x, y=conf.high),linetype=2,lwd=0.5,alpha=0.5)+
+#   geom_line(data=modforp_dur, aes(x=x, y=conf.low),linetype=2,lwd=0.5,alpha=0.5)+
+#   geom_line(data=modforp_dur, aes(x=x, y=predicted), colour= "grey70",lwd=1)+
+#   geom_ribbon(data=modforc_dur, aes(x=x,ymin=conf.low, ymax=conf.high), fill="steelblue1", alpha=0.2, inherit.aes = FALSE)+
+#   geom_line(data=modforc_dur, aes(x=x, y=conf.high),linetype=2,alpha=0.5)+
+#   geom_line(data=modforc_dur, aes(x=x, y=conf.low),linetype=2,alpha=0.5)+
+#   geom_line(data=modforc_dur, aes(x=x, y=predicted), lwd=1, colour="steelblue1")+
+#   coord_cartesian(ylim = c(0,16))+
+#   scale_y_continuous(breaks = seq(0, 15, 2), expand=c(0,0)) +
+#   scale_x_continuous(breaks = seq(0, 150, 30),limits=c(0,150),expand=c(0,0)) +
+#   labs(x = expression ("PRE Duration s" ^-1), y = expression("Switch rate" ~ ("switches?minute" ^-1)))+
+#   theme_bw()+
+#   theme(panel.grid.major = element_blank(),
+#         panel.grid.minor = element_blank(),
+#         panel.border = element_rect(colour="black"),
+#         axis.ticks = element_line(colour="black"),
+#         axis.title.y = element_blank(),
+#         axis.text.y=element_blank(),
+#         axis.text.x=element_text(colour="black", size = 10))+
+#   rremove("legend")
+# dur_switch
+# 
+# forag_switch <-ggplot(model_df, aes(x=foraging_rate, y=switch_rate)) + 
+#   geom_ribbon(data=modforp, aes(x=x,ymin=conf.low, ymax=conf.high),fill="grey70",alpha=0.2, inherit.aes = FALSE)+
+#   geom_line(data=modforp, aes(x=x, y=conf.high),linetype=2,lwd=0.5,alpha=0.5)+
+#   geom_line(data=modforp, aes(x=x, y=conf.low),linetype=2,lwd=0.5,alpha=0.5)+
+#   geom_line(data=modforp, aes(x=x, y=predicted), colour= "grey70",lwd=1)+
+#   geom_ribbon(data=modforc, aes(x=x,ymin=conf.low, ymax=conf.high), fill="steelblue1", alpha=0.2, inherit.aes = FALSE)+
+#   geom_line(data=modforc, aes(x=x, y=conf.high),linetype=2,alpha=0.5)+
+#   geom_line(data=modforc, aes(x=x, y=conf.low),linetype=2,alpha=0.5)+
+#   geom_line(data=modforc, aes(x=x, y=predicted), lwd=1, colour="steelblue1")+
+#   coord_cartesian(ylim = c(0,16))+
+#   scale_y_continuous(breaks = seq(0, 15, 2), expand=c(0,0)) +
+#   scale_x_continuous(breaks = seq(0, 8, 1),limits=c(0,8),expand=c(0,0)) +
+#   labs(x = expression ("Foraging rate" ~ ("attacks?minute" ^-1)), y = expression("Switch rate" ~ ("switches?minute" ^-1)))+
+#   theme_bw()+
+#   theme(panel.grid.major = element_blank(),
+#         panel.grid.minor = element_blank(),
+#         panel.border = element_rect(colour="black"),
+#         axis.ticks = element_line(colour="black"),
+#         axis.text.x=element_text(colour="black", size = 10),
+#         axis.text.y=element_text(colour="black", size = 10))+
+#   rremove("legend")
+# forag_switch
+# 
+# switch_bind <-plot_grid(forag_switch, dur_switch,
+#                         ncol = 2, nrow = 1, rel_widths = c(5.3,4.7),align = "h") + 
+#   draw_plot_label(label = c("a)", "b)", "CI = 95%", "CI = 95%"), 
+#                   size = 10,
+#                   x = c(0.10, 0.55,0.31, 0.8), 
+#                   y = c(0.97, 0.97,0.97, 0.97)) 
+# switch_bind
+# 
+# ggsave(filename="switch_bind.svg", plot=switch_bind, device = "svg",units="cm", width=14,height=7, dpi=600)
 
 ####################################
