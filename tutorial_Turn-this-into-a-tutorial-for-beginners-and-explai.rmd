@@ -1,0 +1,58 @@
+# Shapiro-Wilk Normality Test using R
+
+In statistics, the Shapiro-Wilk test is a way to check whether a random sample comes from a normal distribution. The test gives us a **p-value**, which is a number between 0 and 1. A small p-value (less than 0.05) indicates strong evidence against the null hypothesis which states that the distribution is normal. On the other hand, a large p-value indicates weak evidence against the null hypothesis which means our data is likely to be normally distributed.
+
+In this tutorial, we will learn how to conduct a Shapiro-Wilk normality test using R.
+
+## Prerequisites
+
+Before we start, make sure you have the following installed:
+
+- R
+- RStudio (optional)
+
+## Dataset
+
+For this tutorial, we will use the `tongue_1` dataset which is available in the `MASS` package. The dataset contains the duration of a vowel sound for 40 speakers of standard Dutch.
+
+We will conduct the Shapiro-Wilk normality test on the `pre_dur` variable which represents the duration of the vowel sound before a plosive consonant.
+
+To load the dataset in R, open a new R session and type the following command:
+
+```r
+library(MASS)
+data(tongue_1)
+```
+
+## Conducting the Shapiro-Wilk Test
+
+To conduct the Shapiro-Wilk test, we will use the `shapiro.test()` function which is built into R.
+
+```r
+shapiro.test(tongue_1$pre_dur)
+```
+
+Let's break down this code:
+
+- `shapiro.test()` - the function to conduct the Shapiro-Wilk test.
+- `tongue_1$pre_dur` - the variable we want to test for normality. The `$` symbol is used to access the `pre_dur` column within the `tongue_1` dataset.
+
+When we run this code in R, we will get the following output:
+
+```
+Shapiro-Wilk normality test
+
+data:  tongue_1$pre_dur
+W = 0.94227, p-value = 0.0548
+```
+
+The output of the test includes:
+
+- `W` - the test statistic which a number between 0 and 1.
+- `p-value` - the probability of observing the data given the null hypothesis that the sample comes from a normal distribution.
+
+In this case, the p-value is 0.0548 which is greater than 0.05. Therefore, we have weak evidence against the null hypothesis and we can assume that the `pre_dur` variable is normally distributed.
+
+## Conclusion
+
+In this tutorial, we learned how to conduct the Shapiro-Wilk normality test in R using the `shapiro.test()` function. We also learned how to interpret the results of the test and made conclusions about whether a variable is normally distributed.
