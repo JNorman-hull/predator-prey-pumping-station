@@ -2,7 +2,7 @@
 #R 4.1.2
 #Tongue end/Bourne Eau Predator-prey interactions data set
 
-#Required libraries
+#Required libraries####
 
 library(tidyverse)
 library(dunn.test)
@@ -15,9 +15,7 @@ library(ggplot2)
 library(forcats)
 library(cowplot)
 
-###################################
-#### 1 - Load data and prepare ####
-###################################
+#1 Load data and prepare ####
 
 ##tongue_1.csv - Primary data set: sample period, month, PRE, PRE duration, attack in  PRE, number of attacks, foraging rate, predator size, predator species
 ## shoal size, shoal density, shoal area, switching rate
@@ -26,26 +24,43 @@ tongue_1=read_csv("./data/tongue_1.csv")
 ##tongue_2 - Secondary data set: attack duration, shoal behavior response, shoal behavior duration, shoal change (density, area)
 tongue_2=read_csv("./data/tongue_2.csv")
 
-#####Set up labels and factors
+#1.1 Set up labels and factors####
 
-tongue_1$month <- factor(tongue_1$month, labels = c("October", "November", "December"))
-tongue_1$sample <- factor(tongue_1$sample, labels = c("Dawn","Day","Dusk","Night"))
-tongue_1$action_pred <- factor(tongue_1$action_pred, labels = c("No attack", "Attack"))
-tongue_1$sp_pred <- factor(tongue_1$sp_pred, labels=c("Phalacrocorax carbo", "Esox lucius"))
-tongue_1$shoal_beh <- factor(tongue_1$shoal_beh, labels=c("No response", "Flee", "Flee \n (into weedscreen)", "Flee \n (away from weedscreen)", "Avoid", "Avoid \n (into weedscreen)", "Avoid \n (away from weedscreen)"))
-tongue_1$attack_in_pre <- factor(tongue_1$attack_in_pre, labels = c("No predator attack \n during PRE", "Predator attack \n during PRE"))
+# Create a lookup table for variable labels
+labels_table <- list(
+  month = c('October', 'November', 'December'),
+  sample = c('Dawn','Day','Dusk','Night'),
+  action_pred = c('No attack', 'Attack'),
+  sp_pred = c('Phalacrocorax carbo', 'Esox lucius'),
+  shoal_beh = c('No response', 'Flee', 'Flee \n (into weedscreen)', 'Flee \n (away from weedscreen)', 
+                'Avoid', 'Avoid \n (into weedscreen)', 'Avoid \n (away from weedscreen)'),
+  attack_in_pre = c('No predator attack \n during PRE', 'Predator attack \n during PRE'),
+  response = c('Flee', 'Avoid')
+)
 
-tongue_2$month <- factor(tongue_2$month, labels = c("October", "November", "December"))
-tongue_2$sample <- factor(tongue_2$sample, labels = c("Dawn","Day","Dusk","Night"))
-tongue_2$action_pred <- factor(tongue_2$action_pred, labels = c("No attack", "Attack"))
-tongue_2$response <- factor(tongue_2$response, labels = c("Flee", "Avoid"))
-tongue_2$sp_pred <- factor(tongue_2$sp_pred, labels=c("Phalacrocorax carbo", "Esox lucius"))
-tongue_2$shoal_beh <- factor(tongue_2$shoal_beh, labels=c("No response", "Flee", "Flee \n (into weedscreen)", "Flee \n (away from weedscreen)", "Avoid", "Avoid \n (into weedscreen)", "Avoid \n (away from weedscreen)"))
+#1.1.1 convert_to_factors function####
 
-#############################
-#####Tests for normality#####
-#############################
+#Function takes two arguments - data (DF to be converted) and labels_table (variable labels)
+#Loop over each var in labels_table, check if current var is present in DF, if present extract levels
+#Retrieve labels, convert var to factors, end the if statement, end the loop, return the DF
 
+convert_to_factors <- function(data, labels_table) {
+  for (var in names(labels_table)) {
+    if (var %in% names(data)) {
+      levels <- unique(data[[var]])
+      labels <- labels_table[[var]]
+      data[[var]] <- factor(data[[var]], levels = levels, labels = labels)
+    }
+  }
+  return(data)
+}
+
+#Convert factor variables of tongue_1 and tongue_2
+tongue_1 <- convert_to_factors(tongue_1, labels_table)
+tongue_2 <- convert_to_factors(tongue_2, labels_table)
+
+#2 Data exploration and summary statistics ####
+#2.1 Normality testing####
 shapiro.test(tongue_1$pre_dur)
 qqnorm(tongue_1$pre_dur, pch = 1, frame = FALSE)
 qqline(tongue_1$pre_dur, col = "steelblue", lwd = 2)
@@ -70,16 +85,12 @@ shapiro.test(tongue_1$shoal_density)
 qqnorm(tongue_1$shoal_density, pch = 1, frame = FALSE)
 qqline(tongue_1$shoal_density, col = "steelblue", lwd = 2)
 
-###Data is not normally distrusted
-###data is also multinomial (month, sample period) with bimodal elements (attacks, pred_sp) so is very unlikely to achieve normality
+#Data is not normally distrusted
+#data is also multinomial (month, sample period) with bimodal elements (attacks, pred_sp) so is very unlikely to achieve normality
 
-#####################################################
-#### 2 - Data exploration and summary statistics ####
-#####################################################
 
-#Temporal dynamics and predator behaviour
-
-###PRE metadata (sample periods, months, predator species, attack during)
+#2.2 PRE metadata####
+#(sample periods, months, predator species, attack during)
 
 #PRE count by species, % of PRE
 tongue_1  %>% group_by(sp_pred) %>%  summarise(n = n())%>% mutate(rel.freq = paste0(round(100 * n/sum(n), 0), "%"))
@@ -96,7 +107,7 @@ tongue_1  %>% group_by(sample,sp_pred) %>%  summarise(med = median(pre_dur),min 
 #PRE duration by attack status, pike
 tongue_1  %>% filter(sp_pred=="Esox lucius")%>%group_by(action_pred) %>% summarise( med = median(pre_dur),min = min(pre_dur),max = max(pre_dur),IQR = IQR(pre_dur))
 
-#########PRE duration statistical
+#PRE duration statistical
 
 #between species
 wilcox.test(tongue_1$pre_dur~tongue_1$sp_pred)
@@ -109,7 +120,6 @@ tongue_1 %>% filter(sp_pred=="Phalacrocorax carbo")%>% kruskal.test(data=.,pre_d
 
 #pike
 tongue_1 %>% filter(sp_pred=="Esox lucius")%>%kruskal.test(data=.,pre_dur~sample)
-
 #Kruskal-Wallis chi-squared = 14.619, df = 3, p-value = 0.002173
 
 #post-hoc testing
@@ -119,7 +129,8 @@ tongue_1 %>% filter(sp_pred=="Esox lucius")%>%dunn.test(x=.$pre_dur, g=.$sample)
 tongue_1 %>% filter(sp_pred=="Esox lucius")%>%wilcox.test(data=.,pre_dur~attack_in_pre)
 #W = 1946, p-value = 0.04029
 
-#####Predator metadata (size, attacks, foraging rate)
+#2.3 Predator metadata####
+#(size, attacks, foraging rate)
 
 #Predator size
 tongue_1  %>% group_by(sp_pred) %>% summarise(med = median(size_pred),min = min(size_pred),max = max(size_pred),IQR = IQR(size_pred))
@@ -144,11 +155,9 @@ tongue_2  %>%  filter(action_pred=="Attack")%>%group_by(sp_pred)%>%summarise(med
 tongue_2  %>%  filter(action_pred=="Attack")%>%wilcox.test(data=.,action_dur~sp_pred)
 #W = 1599.5, p-value = 0.007516
 
-###Foraging rate statistical
-
-###Correlation testing###
+#Foraging rate statistical
+#Correlation testing
 #Add ID ROW
-#explain this code
 tongue_1$ID<-1:nrow(tongue_1)
 
 #Corm, foraging_rate, row ID
@@ -161,7 +170,7 @@ ggscatter(tongue_1%>%filter(sp_pred=="Phalacrocorax carbo")%>% filter(action_pre
           xlab = "ID", ylab = "Foraging rate")
 #p-value = 0.7678  rho 0.06085365 
 
-#Corm, foraging_rate, row ID
+#Pike, foraging_rate, row ID
 tongue_1%>%filter(sp_pred=="Esox lucius")%>% filter(action_pred=="Attack")%>%
   cor.test(data=.,.$ID, .$foraging_rate,  method="spearman", exact=FALSE)
 ggscatter(tongue_1%>%filter(sp_pred=="Esox lucius")%>% filter(action_pred=="Attack") ,x = "ID", y = "foraging_rate", 
@@ -194,7 +203,7 @@ tongue_1  %>% filter(sp_pred=="Phalacrocorax carbo")%>%
 tongue_1  %>% filter(sp_pred=="Phalacrocorax carbo")%>% 
   dunn.test(x=.$foraging_rate, g=.$sample)
 
-#############Prey shoal metadata
+#2.4 Prey shoal metadata####
 
 #Prey shoal size
 tongue_1  %>% filter(!is.na(shoal_size))%>%summarise(sum=sum(shoal_size))
@@ -205,7 +214,7 @@ tongue_1  %>% filter(!is.na(shoal_density))%>%group_by(month, sample)%>%summaris
 #Prey shoal density, species, attack behaviour
 tongue_1  %>% filter(!is.na(shoal_density))%>%group_by(sp_pred, action_pred)%>%summarise(med = median(shoal_density),min = min(shoal_density),max = max(shoal_density),IQR = IQR(shoal_density))
 
-#############Prey shoal statistical
+#Prey shoal statistical
 
 #shoal size months
 tongue_1  %>% filter(!is.na(shoal_size))%>%
@@ -227,9 +236,8 @@ tongue_1%>%filter(sp_pred=="Esox lucius")%>%
   wilcox.test(data=., shoal_density~attack_in_pre)
 #W = 548.5, p-value = 0.0001161
 
-#######Prey shoal behavioural responses
-
-##Areal response of prey, predator species
+#Prey shoal behavioural responses
+#Areal response of prey, predator species
 
 #cormorant
 tongue_2  %>%filter(!is.na(change_area))%>%filter(sp_pred=="Phalacrocorax carbo")%>%group_by(action_pred) %>% summarise( med = median(change_area),min = min(change_area),max = max(change_area),IQR = IQR(change_area))
@@ -266,7 +274,7 @@ tongue_2 %>%filter(action_pred=="Attack")%>%
   wilcox.test(data=., change_density~sp_pred, exact=FALSE)
 #W = 290, p-value = 0.0439
 
-####Prey behavioural response categories 
+#Prey behavioural response categories 
 
 #shoal behaviors
 tongue_2 %>% filter(!is.na(shoal_beh))%>%
@@ -317,21 +325,20 @@ tongue_2  %>% filter(!is.na(beh_response_dur))%>%
 tongue_2  %>% filter(!is.na(beh_response_dur))%>%
   dunn.test(x=.$beh_response_dur, g=.$shoal_beh)
 
-##### Proportion of flee responses in cormorant attacks
+#Proportion of flee responses in cormorant attacks
 prop.test(x=c(12, 26, 8), n=c(46, 46, 46),  conf.level = 0.95,)
 
-##### Proportion of flee responses in pike attacks
+#Proportion of flee responses in pike attacks
 prop.test(x=c(10, 17, 22), n=c(49, 49, 49))
 
-##### Proportion of avoid responses in pike no attacks
+#Proportion of avoid responses in pike no attacks
 prop.test(x=c(19, 75, 8, 17), n=c(119, 119, 119, 119))
 
 
-########Weed screen switch rate
+#2.4.1 Weed screen switch rate####
 
 #Primary consideration when handling data: Ensure weed screen switching is dependent on predator behavior.
 #I.E., cannot simply compare attacks to no attack based on initial prey response, as no attack could include attacks which happened after first response.
-
 # Create new data set that:
 # Excludes all NA values from switch_rate (important to double check that genuine 0's are correctly recorded)
 # Includes switch_rate from the initial attack behavior only to ensure comparable between predator species
@@ -343,7 +350,6 @@ switch_2 <-tongue_1  %>%filter(!is.na(switch_rate))%>%filter(sp_pred=="Esox luci
 #Corm
 switch_3 <-tongue_1  %>%filter(!is.na(switch_rate))%>%filter(sp_pred=="Phalacrocorax carbo")
 
-
 #Convert column group from factor to numeric for row binding
 #as.character first required to convert factor to character, and then to numeric
 switch_1$sp_pred = as.numeric(as.character(switch_1$sp_pred))
@@ -354,7 +360,6 @@ switch_3$sp_pred = as.numeric(as.character(switch_3$sp_pred))
 switch_3["sp_pred"] <- 1
 
 ##modified for figure creation, code will need adjusting accordingly
-
 switch_df <- rbind(switch_1, switch_2, switch_3)
 
 #Descriptive statistics
@@ -419,13 +424,9 @@ ggscatter(switch_df %>%filter(sp_pred=="Esox lucius")%>%filter(action_pred=="Att
           cor.coef = TRUE, cor.method = "spearman",
           xlab = "foraging_rate", ylab = "Switrch rate")
 
-##########################################
-#### 3 - Generalised Linear Modelling ####
-##########################################
-
+#3 GLM ####
 #Prepare data set for modelling - only interested in PREs which only contain attacks, 
 #thus limiting cormorants to 26 PREs, pike to 19 PREs
-
 # Response variable is a continuous numeric value
 
 model_df <- rbind(switch_1, switch_3)
@@ -443,12 +444,10 @@ model_df  %>%
     n = n())
 
 #check for missing data
-
 colSums(is.na(model_df))
-# not in any of the variables used
+#not in any of the variables used
 
 #Check distribution of data
-
 fit1 <- lm(model_df$switch_rate ~ model_df$foraging_rate)
 hist(residuals(fit1))
 
@@ -461,7 +460,6 @@ shapiro.test(residuals(fit1))
 #Use Generalised Linear Model and consider gamma distribution, or a log linked Gaussian
 
 #Use Brown & Forsythe test to check for Homogeneity of Variance
-
 leveneTest(model_df$switch_rate,
             model_df$foraging_rate,
             location = c("median"),
@@ -493,7 +491,6 @@ vif(glm(switch_rate ~ sample + sp_pred + month + foraging_rate + shoal_density,
 
 #No evidence for co-linearity
 ###Explore plots to determine relationships of interest
-
 plot(model_df$switch_rate~ model_df$foraging_rate) #positive linear
 plot(model_df$switch_rate~ model_df$shoal_density) #positive linear
 plot(model_df$switch_rate~ model_df$sample) #dusk possibly highest, maybe interacts with sp_pred
@@ -505,15 +502,7 @@ plot(model_df$switch_rate~ model_df$month) #November lowest, but probably reduce
 model_df <-model_df[-c(19),]
 
 #Of these, a model containing foraging rate and duration would be interesting
-
-### Now consider interactions 
-
-ggplot(model_df, aes(x=shoal_density, y=switch_rate)) + 
-  geom_point()+
-  geom_smooth(method=lm, se=FALSE) +facet_grid(~sample)
-
-#strength of interaction between shoal_density and dawn is stronger
-#possible interaction with shoal_density and sample period
+#Now consider interactions 
 
 ggplot(model_df, aes(x=sp_pred, y=switch_rate)) + 
   geom_point()+
@@ -521,13 +510,8 @@ ggplot(model_df, aes(x=sp_pred, y=switch_rate)) +
 
 #strength of interaction between switch_rate and dusk is stronger in cormorant events
 #Not enough data points to correctly test this interaction 
-
-#####Build GLM####
-
 #The data exploration showed
-
 #continuous non-negative response variable with 5 values at 0
-
 # No NAs
 # 1 outlier in predictor variable pre_dur, removed
 # Non-normally distributed response variable, but homogeneous 
@@ -537,14 +521,13 @@ ggplot(model_df, aes(x=sp_pred, y=switch_rate)) +
 # Probable independence of response variable - each PRE was a unique event
 
 #Remove all unnecessary variables from data frame
-
 model_df<-subset(model_df, select=-c(date,month,sample, time,pre_id, pre,attack_in_pre,n_pred, 
                                      size_pred,action_pred,tte_pred,n_attack,shoal_size,shoal_density,
                                      shoal_area,change_size,change_density,change_area,
                                      shoal_beh,tte_shoal_end))
 
 #Given that thee are zeros in the response variable, these will need to be offset to allow the model to run
-# non-positive y values not allowed in Guassian and Gamma models
+# non-positive y values not allowed in Gaussian and Gamma models
 # add 0.0000000001 to response
 model_df[c(2,5,11,13,22), "switch_rate"] <- 0.0000000001
 
@@ -566,17 +549,20 @@ summary (model1_duration)
 
 #Similar results to previous model, poor prediction and alternative distribution required
 
+#3.1 GLM species interaction####
+
 #consider if using Gaussian with link = log will improve model fit
 
 model2_foraging<- glm(switch_rate ~ foraging_rate*sp_pred,family=gaussian(link="log"),
                     data = model_df)
 summary (model2_foraging)
 
-#plot predicted values at 0:8, stepped by 0.1 = ~80 predicted observations 
+#plot predicted values at 0:8, stepped by 0.1 = ~80 predicted observations
 plot(ggpredict(model2_foraging, terms = c("foraging_rate[0:8, by=0.1]","sp_pred[P carbo]")))
 plot(ggpredict(model2_foraging, terms = c("foraging_rate[0:8, by=0.1]","sp_pred[E lucius]")))
 
-#Model estimates make more sense in the context of observed data. Positive relationship between foraging rate and weed screen switch rate
+#Model estimates make more sense in the context of observed data. P
+#positive relationship between foraging rate and weed screen switch rate
 #Effect reduced in pike events compared to cormorant events
 
 model2_duration<- glm(switch_rate ~ pre_dur*sp_pred,family=gaussian(link="log"),
@@ -584,7 +570,7 @@ model2_duration<- glm(switch_rate ~ pre_dur*sp_pred,family=gaussian(link="log"),
 summary (model2_duration)
 
 #Improved over gamma distribution. Model predictions much more sensible
-#plot predicted values at 0:8, stepped by 0.1 = ~80 predicted observations 
+#plot predicted values at 0:8, stepped by 0.1 = ~80 predicted observations
 plot(ggpredict(model2_duration, terms = c("pre_dur[0:150, by=0.1]","sp_pred[P carbo]")))
 plot(ggpredict(model2_duration, terms = c("pre_dur[0:150, by=0.1]","sp_pred[E lucius]")))
 
@@ -596,7 +582,7 @@ simuout1 <- simulateResiduals(fittedModel = fittedModel1)
 plot(simuout1)
 
 #Plotted vs residuals ok
-testDispersion(simuout1) 
+testDispersion(simuout1)
 #Dispersion close to 1
 #model2_duration
 
@@ -605,21 +591,22 @@ simuout2 <- simulateResiduals(fittedModel = fittedModel2)
 plot(simuout2)
 
 #Plotted vs residuals deviance detected, but accepted
-testDispersion(simuout2) 
+testDispersion(simuout2)
 #Dispersion close to 1
 
 #Adding a random effect of month or sample period would not improve the models given the variance determined earlier
 
-######model2_foraging & model2_duration accepted as fitted models
+#plot predictions
+plot(ggpredict(model2_duration, terms = c("pre_dur[0:150, by=1]","sp_pred[P carbo]")))
+plot(ggpredict(model2_duration, terms = c("pre_dur[0:150, by=1]","sp_pred[E lucius]")))
+plot(ggpredict(model2_foraging, terms = c("foraging_rate[0:8, by=0.1]","sp_pred[P carbo]")))
+plot(ggpredict(model2_foraging, terms = c("foraging_rate[0:8, by=0.1]","sp_pred[E lucius]")))
 
-modforc_dur <-ggpredict(model2_duration, terms = c("pre_dur[0:150, by=1]","sp_pred[P carbo]"))
-modforp_dur <-ggpredict(model2_duration, terms = c("pre_dur[0:150, by=1]","sp_pred[E lucius]"))
-modforc <-ggpredict(model2_foraging, terms = c("foraging_rate[0:8, by=0.1]","sp_pred[P carbo]"))
-modforp <-ggpredict(model2_foraging, terms = c("foraging_rate[0:8, by=0.1]","sp_pred[E lucius]"))
+#3.2 GLM no species####
 
-######Revisiting GLM analysis RE: T. Reid Nelson comments
-
+#Revisiting GLM analysis RE: T. Reid Nelson comments
 ##Remove species interaction
+#this is model presenetd in paper
 
 model2.1_foraging<- glm(switch_rate ~ foraging_rate+sp_pred,family=gaussian(link="log"),
                         data = model_df)
@@ -633,8 +620,6 @@ write.csv(table1, file = "model2.1_foraging.csv")
 plot(ggpredict(model2.1_foraging, terms = c("foraging_rate[0:6, by=0.1]","sp_pred")))
 plot(ggpredict(model2.1_foraging, terms = c("foraging_rate[0:8, by=0.1]","sp_pred[E lucius]")))
 
-######
-
 model2.1_duration<- glm(switch_rate ~ pre_dur+sp_pred,family=gaussian(link="log"),
                         data = model_df)
 
@@ -647,16 +632,31 @@ write.csv(table2, file = "model2.1_duration.csv")
 plot(ggpredict(model2.1_duration, terms = c("pre_dur[0:100, by=1]","sp_pred")))
 plot(ggpredict(model2.1_duration, terms = c("pre_dur[0:150, by=1]","sp_pred[E lucius]")))
 
-#############################
-#### 4 - Produce figures ####
-#############################
+#Check model fit with DHARMA
+#model2.1_foraging
 
+fittedModel1 <- model2.1_foraging
+simuout1 <- simulateResiduals(fittedModel = fittedModel1)
+plot(simuout1)
+
+#Plotted vs residuals ok
+testDispersion(simuout1)
+#Dispersion close to 1
+#model2.1_duration
+
+fittedModel2 <- model2.1_duration
+simuout2 <- simulateResiduals(fittedModel = fittedModel2)
+plot(simuout2)
+testDispersion(simuout2)
+#Dispersion close to 1
+
+#4 Produce figures ####
 
 #create colour vector
 
 colours <- c("steelblue1", "grey70")
 
-#Create theme
+#4.1 Create theme function####
 
 theme_JN <- function(base_size=10){ 
   theme_grey() %+replace%
@@ -673,8 +673,7 @@ theme_JN <- function(base_size=10){
     ) 
 }
 
-
-#### Figure 1 (Figure 3 in paper): N PRE, facet by predator species, month and fill by sample period ####
+#4.2 Figure 1 (Figure 2 in paper): N PRE, facet by predator species, month and fill by sample period ####
 
 prebar <- ggplot(tongue_1, aes(x=factor(attack_in_pre), y=pre, fill=factor(sample, labels=c("Dawn","Day","Dusk", "Night"))))+
   geom_bar(color="black",stat='identity',position=position_stack(reverse=TRUE), size=1)+
@@ -701,43 +700,13 @@ prebar
 
 ggsave(filename="pre_main_bar.svg", plot=prebar,device = "svg",units="cm",width=14,height=12, dpi=600)
 
-#################
-#################
 
-#### Figure 2 (Figure 6 in paper): N behavior responses, facet by predator species and fill by attack behavior####
 
-shoalbehbar <- ggplot(tongue_2%>%filter(!is.na(shoal_beh)), aes(x=shoal_beh, fill=action_pred))+
-  geom_bar(color="black",stat='count',position="stack")+
-  labs(x = "Prey shoal behaviour response", y = "Behaviour count")+
-  scale_y_continuous(breaks = seq(0, 80, 20),limits=c(0,85), expand=c(0,0))+
-  scale_fill_manual(values=c("forestgreen", "red4"))+
-  theme_bw() + 
-  theme(panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        panel.spacing = unit(0.4, "lines"),
-        axis.text.x=element_text(colour="black", size = 10),
-        axis.text.y=element_text(colour="black", size = 10),
-        legend.position = c(.85, 0.85),
-        legend.title = element_blank(),
-        legend.key.height = unit(0.4,"cm"),
-        legend.key.width = unit(0.4, "cm"),
-        legend.text = element_text(size=8),
-        legend.background = element_rect(colour = 'black', fill = 'white'),
-        strip.text.x = element_text(face = "italic"))+
-  facet_grid(~fct_rev(factor(sp_pred)))+coord_flip()
-shoalbehbar
-
-ggsave(filename="shoal_beh_bar.svg", plot=shoalbehbar,device = "svg",units="cm",width=14,height=8, dpi=600)
-
-#################
-#################
-
-#### Figure 3 (Figure 5 in paper): Prey areal response, Prey density response, weed screen switch rate ####
+#4.4 Figure 2 (Figure 3 in paper): Prey areal response, Prey density response, weed screen switch rate ####
 
 #Require 3 separate plots, arranged into grid using plot_grid (cowplot)
 
 #GRID 1: Prey areal response
-
 ####Box plot change in area no attack pike, change in area attack both species
 
 #Create new data frame
@@ -887,8 +856,7 @@ pre_response_bind
 
 ggsave(filename="pre_response_bind.svg", plot=pre_response_bind, device = "svg",units="cm", width=10,height=14, dpi=600)
 
-#################
-#################
+#4.5 Figure 3 (Figure 4 in paper) GLM####
 
 #Get predicted model fit line using ggpredict and store as dataframe
 
@@ -917,7 +885,7 @@ modforp["group"] <- 2
 predator_attack_mod <- bind_rows(modforc, modforp)
 
 PREduration_mod <-ggplot(predator_PRE_dur_mod, aes(x=x, y=predicted, color=as.factor(group),fill=as.factor(group)))+
-  geom_jitter(model_df, height = 0.5, width = 1, shape = 21, inherit.aes = FALSE,mapping=aes(x=pre_dur, y=switch_rate, fill=as.factor(sp_pred)))+
+  geom_jitter(model_df, height = 0, width = 0, shape = 21, inherit.aes = FALSE,mapping=aes(x=pre_dur, y=switch_rate, fill=as.factor(sp_pred)))+
   geom_line(lwd=1)+
   geom_ribbon(aes(x=x,ymin=conf.low, ymax=conf.high),alpha=0.3, colour="black",linetype=0)+
   scale_fill_manual(values=colours)+
@@ -934,7 +902,7 @@ PREduration_mod <-ggplot(predator_PRE_dur_mod, aes(x=x, y=predicted, color=as.fa
 PREduration_mod 
 
 attack_mod <-ggplot(predator_attack_mod, aes(x=x, y=predicted, color=as.factor(group),fill=as.factor(group)))+
-  geom_jitter(model_df, shape = 21, height = 0.5, width = 1, inherit.aes = FALSE,mapping=aes(x=foraging_rate, y=switch_rate,fill=as.factor(sp_pred)))+
+  geom_jitter(model_df, shape = 21, height = 0, width = 0, inherit.aes = FALSE,mapping=aes(x=foraging_rate, y=switch_rate,fill=as.factor(sp_pred)))+
   geom_line(lwd=1)+
   geom_ribbon(aes(x=x,ymin=conf.low, ymax=conf.high),alpha=0.3,linetype=0)+
   scale_fill_manual(values=colours)+
@@ -957,65 +925,29 @@ combined_mod <-plot_grid(attack_mod, PREduration_mod,
 combined_mod
 ggsave(filename="combined_mod.svg", plot=combined_mod, device = "svg",units="cm", width=14,height=7)
 
-# #### Figure 4 (Figure 5 in paper): GLM prediction weed screen switch rate ####
-# 
-# #Cord_cartesian is used to 'zoom' the plot, scale_x 'subsets' data
-# 
-# dur_switch <-ggplot(model_df, aes(x=pre_dur, y=switch_rate)) + 
-#   geom_ribbon(data=modforp_dur, aes(x=x,ymin=conf.low, ymax=conf.high),fill="grey70",alpha=0.2, inherit.aes = FALSE)+
-#   geom_line(data=modforp_dur, aes(x=x, y=conf.high),linetype=2,lwd=0.5,alpha=0.5)+
-#   geom_line(data=modforp_dur, aes(x=x, y=conf.low),linetype=2,lwd=0.5,alpha=0.5)+
-#   geom_line(data=modforp_dur, aes(x=x, y=predicted), colour= "grey70",lwd=1)+
-#   geom_ribbon(data=modforc_dur, aes(x=x,ymin=conf.low, ymax=conf.high), fill="steelblue1", alpha=0.2, inherit.aes = FALSE)+
-#   geom_line(data=modforc_dur, aes(x=x, y=conf.high),linetype=2,alpha=0.5)+
-#   geom_line(data=modforc_dur, aes(x=x, y=conf.low),linetype=2,alpha=0.5)+
-#   geom_line(data=modforc_dur, aes(x=x, y=predicted), lwd=1, colour="steelblue1")+
-#   coord_cartesian(ylim = c(0,16))+
-#   scale_y_continuous(breaks = seq(0, 15, 2), expand=c(0,0)) +
-#   scale_x_continuous(breaks = seq(0, 150, 30),limits=c(0,150),expand=c(0,0)) +
-#   labs(x = expression ("PRE Duration s" ^-1), y = expression("Switch rate" ~ ("switches?minute" ^-1)))+
-#   theme_bw()+
-#   theme(panel.grid.major = element_blank(),
-#         panel.grid.minor = element_blank(),
-#         panel.border = element_rect(colour="black"),
-#         axis.ticks = element_line(colour="black"),
-#         axis.title.y = element_blank(),
-#         axis.text.y=element_blank(),
-#         axis.text.x=element_text(colour="black", size = 10))+
-#   rremove("legend")
-# dur_switch
-# 
-# forag_switch <-ggplot(model_df, aes(x=foraging_rate, y=switch_rate)) + 
-#   geom_ribbon(data=modforp, aes(x=x,ymin=conf.low, ymax=conf.high),fill="grey70",alpha=0.2, inherit.aes = FALSE)+
-#   geom_line(data=modforp, aes(x=x, y=conf.high),linetype=2,lwd=0.5,alpha=0.5)+
-#   geom_line(data=modforp, aes(x=x, y=conf.low),linetype=2,lwd=0.5,alpha=0.5)+
-#   geom_line(data=modforp, aes(x=x, y=predicted), colour= "grey70",lwd=1)+
-#   geom_ribbon(data=modforc, aes(x=x,ymin=conf.low, ymax=conf.high), fill="steelblue1", alpha=0.2, inherit.aes = FALSE)+
-#   geom_line(data=modforc, aes(x=x, y=conf.high),linetype=2,alpha=0.5)+
-#   geom_line(data=modforc, aes(x=x, y=conf.low),linetype=2,alpha=0.5)+
-#   geom_line(data=modforc, aes(x=x, y=predicted), lwd=1, colour="steelblue1")+
-#   coord_cartesian(ylim = c(0,16))+
-#   scale_y_continuous(breaks = seq(0, 15, 2), expand=c(0,0)) +
-#   scale_x_continuous(breaks = seq(0, 8, 1),limits=c(0,8),expand=c(0,0)) +
-#   labs(x = expression ("Foraging rate" ~ ("attacks?minute" ^-1)), y = expression("Switch rate" ~ ("switches?minute" ^-1)))+
-#   theme_bw()+
-#   theme(panel.grid.major = element_blank(),
-#         panel.grid.minor = element_blank(),
-#         panel.border = element_rect(colour="black"),
-#         axis.ticks = element_line(colour="black"),
-#         axis.text.x=element_text(colour="black", size = 10),
-#         axis.text.y=element_text(colour="black", size = 10))+
-#   rremove("legend")
-# forag_switch
-# 
-# switch_bind <-plot_grid(forag_switch, dur_switch,
-#                         ncol = 2, nrow = 1, rel_widths = c(5.3,4.7),align = "h") + 
-#   draw_plot_label(label = c("a)", "b)", "CI = 95%", "CI = 95%"), 
-#                   size = 10,
-#                   x = c(0.10, 0.55,0.31, 0.8), 
-#                   y = c(0.97, 0.97,0.97, 0.97)) 
-# switch_bind
-# 
-# ggsave(filename="switch_bind.svg", plot=switch_bind, device = "svg",units="cm", width=14,height=7, dpi=600)
 
-####################################
+#4.3 Figure 4 (Figure 5 in paper): N behavior responses, facet by predator species and fill by attack behavior####
+
+shoalbehbar <- ggplot(tongue_2%>%filter(!is.na(shoal_beh)), aes(x=shoal_beh, fill=action_pred))+
+  geom_bar(color="black",stat='count',position="stack")+
+  labs(x = "Prey shoal behaviour response", y = "Behaviour count")+
+  scale_y_continuous(breaks = seq(0, 80, 20),limits=c(0,85), expand=c(0,0))+
+  scale_fill_manual(values=c("forestgreen", "red4"))+
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.spacing = unit(0.4, "lines"),
+        axis.text.x=element_text(colour="black", size = 10),
+        axis.text.y=element_text(colour="black", size = 10),
+        legend.position = c(.85, 0.85),
+        legend.title = element_blank(),
+        legend.key.height = unit(0.4,"cm"),
+        legend.key.width = unit(0.4, "cm"),
+        legend.text = element_text(size=8),
+        legend.background = element_rect(colour = 'black', fill = 'white'),
+        strip.text.x = element_text(face = "italic"))+
+  facet_grid(~fct_rev(factor(sp_pred)))+coord_flip()
+shoalbehbar
+
+ggsave(filename="shoal_beh_bar.svg", plot=shoalbehbar,device = "svg",units="cm",width=14,height=8, dpi=600)
+
