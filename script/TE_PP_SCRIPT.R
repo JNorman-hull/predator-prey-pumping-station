@@ -24,7 +24,7 @@ tongue_1=read_csv("./data/tongue_1.csv")
 ##tongue_2 - Secondary data set: attack duration, shoal behavior response, shoal behavior duration, shoal change (density, area)
 tongue_2=read_csv("./data/tongue_2.csv")
 
-#1.1 Set up labels and factors####
+##1.1 Set up labels and factors####
 
 # Create a lookup table for variable labels
 labels_table <- list(
@@ -38,7 +38,7 @@ labels_table <- list(
   response = c('Flee', 'Avoid')
 )
 
-#1.1.1 convert_to_factors function####
+###1.1.1 convert_to_factors function####
 
 #Function takes two arguments - data (DF to be converted) and labels_table (variable labels)
 #Loop over each var in labels_table, check if current var is present in DF, if present extract levels
@@ -60,7 +60,7 @@ tongue_1 <- convert_to_factors(tongue_1, labels_table)
 tongue_2 <- convert_to_factors(tongue_2, labels_table)
 
 #2 Data exploration and summary statistics ####
-#2.1 Normality testing####
+##2.1 Normality testing####
 shapiro.test(tongue_1$pre_dur)
 qqnorm(tongue_1$pre_dur, pch = 1, frame = FALSE)
 qqline(tongue_1$pre_dur, col = "steelblue", lwd = 2)
@@ -89,7 +89,7 @@ qqline(tongue_1$shoal_density, col = "steelblue", lwd = 2)
 #data is also multinomial (month, sample period) with bimodal elements (attacks, pred_sp) so is very unlikely to achieve normality
 
 
-#2.2 PRE metadata####
+##2.2 PRE metadata####
 #(sample periods, months, predator species, attack during)
 
 #PRE count by species, % of PRE
@@ -129,7 +129,7 @@ tongue_1 %>% filter(sp_pred=="Esox lucius")%>%dunn.test(x=.$pre_dur, g=.$sample)
 tongue_1 %>% filter(sp_pred=="Esox lucius")%>%wilcox.test(data=.,pre_dur~attack_in_pre)
 #W = 1946, p-value = 0.04029
 
-#2.3 Predator metadata####
+##2.3 Predator metadata####
 #(size, attacks, foraging rate)
 
 #Predator size
@@ -203,7 +203,7 @@ tongue_1  %>% filter(sp_pred=="Phalacrocorax carbo")%>%
 tongue_1  %>% filter(sp_pred=="Phalacrocorax carbo")%>% 
   dunn.test(x=.$foraging_rate, g=.$sample)
 
-#2.4 Prey shoal metadata####
+##2.4 Prey shoal metadata####
 
 #Prey shoal size
 tongue_1  %>% filter(!is.na(shoal_size))%>%summarise(sum=sum(shoal_size))
@@ -335,7 +335,7 @@ prop.test(x=c(10, 17, 22), n=c(49, 49, 49))
 prop.test(x=c(19, 75, 8, 17), n=c(119, 119, 119, 119))
 
 
-#2.4.1 Weed screen switch rate####
+####2.4.1 Weed screen switch rate####
 
 #Primary consideration when handling data: Ensure weed screen switching is dependent on predator behavior.
 #I.E., cannot simply compare attacks to no attack based on initial prey response, as no attack could include attacks which happened after first response.
@@ -549,7 +549,7 @@ summary (model1_duration)
 
 #Similar results to previous model, poor prediction and alternative distribution required
 
-#3.1 GLM species interaction####
+##3.1 GLM species interaction####
 
 #consider if using Gaussian with link = log will improve model fit
 
@@ -602,7 +602,7 @@ plot(ggpredict(model2_duration, terms = c("pre_dur[0:150, by=1]","sp_pred[E luci
 plot(ggpredict(model2_foraging, terms = c("foraging_rate[0:8, by=0.1]","sp_pred[P carbo]")))
 plot(ggpredict(model2_foraging, terms = c("foraging_rate[0:8, by=0.1]","sp_pred[E lucius]")))
 
-#3.2 GLM no species####
+##3.2 GLM no species####
 
 #Revisiting GLM analysis RE: T. Reid Nelson comments
 ##Remove species interaction
@@ -656,7 +656,7 @@ testDispersion(simuout2)
 
 colours <- c("steelblue1", "grey70")
 
-#4.1 Create theme function####
+##4.1 Create theme function####
 
 theme_JN <- function(base_size=10){ 
   theme_grey() %+replace%
@@ -673,7 +673,7 @@ theme_JN <- function(base_size=10){
     ) 
 }
 
-#4.2 Figure 1 (Figure 2 in paper): N PRE, facet by predator species, month and fill by sample period ####
+##4.2 Figure 1 (Figure 2 in paper): N PRE, facet by predator species, month and fill by sample period ####
 
 prebar <- ggplot(tongue_1, aes(x=factor(attack_in_pre), y=pre, fill=factor(sample, labels=c("Dawn","Day","Dusk", "Night"))))+
   geom_bar(color="black",stat='identity',position=position_stack(reverse=TRUE), size=1)+
@@ -702,7 +702,7 @@ ggsave(filename="pre_main_bar.svg", plot=prebar,device = "svg",units="cm",width=
 
 
 
-#4.4 Figure 2 (Figure 3 in paper): Prey areal response, Prey density response, weed screen switch rate ####
+##4.4 Figure 2 (Figure 3 in paper): Prey areal response, Prey density response, weed screen switch rate ####
 
 #Require 3 separate plots, arranged into grid using plot_grid (cowplot)
 
@@ -856,7 +856,7 @@ pre_response_bind
 
 ggsave(filename="pre_response_bind.svg", plot=pre_response_bind, device = "svg",units="cm", width=10,height=14, dpi=600)
 
-#4.5 Figure 3 (Figure 4 in paper) GLM####
+##4.5 Figure 3 (Figure 4 in paper) GLM####
 
 #Get predicted model fit line using ggpredict and store as dataframe
 
@@ -926,7 +926,7 @@ combined_mod
 ggsave(filename="combined_mod.svg", plot=combined_mod, device = "svg",units="cm", width=14,height=7)
 
 
-#4.3 Figure 4 (Figure 5 in paper): N behavior responses, facet by predator species and fill by attack behavior####
+##4.3 Figure 4 (Figure 5 in paper): N behavior responses, facet by predator species and fill by attack behavior####
 
 shoalbehbar <- ggplot(tongue_2%>%filter(!is.na(shoal_beh)), aes(x=shoal_beh, fill=action_pred))+
   geom_bar(color="black",stat='count',position="stack")+
